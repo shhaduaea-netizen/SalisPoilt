@@ -669,11 +669,11 @@ async function listPasswordRequests(actor: MemberRow) {
   const cid = platform ? null : actor.company_id;
   let query = db
     .from("password_change_requests")
-    .select("id, member_id, company_id, status, requested_at, reviewed_at, reviewed_by, note, target_role, browser_fingerprint, members!member_id(full_name_en, email, user_id)")
+    .select("id, member_id, company_id, status, requested_at, reviewed_at, reviewed_by, note, target_role, browser_fingerprint, members!member_id!inner(full_name_en, email, user_id, role)")
     .order("requested_at", { ascending: false })
     .neq("member_id", actor.id);
   if (cid) query = query.eq("company_id", cid);
-  if (platform) query = query.or(`target_role.eq.platform,company_id.is.null,target_role.is.null`);
+  if (platform) query = query.in("members.role", ["OWNER", "SUPER_ADMIN", "COMPANY_ADMIN"]);
   const { data, error } = await query;
   if (error) throw error;
   return { requests: data ?? [] };
