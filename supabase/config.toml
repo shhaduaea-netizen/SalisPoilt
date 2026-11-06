@@ -1,0 +1,4 @@
+project_id = "salespilot"
+
+[functions.roster]
+verify_jwt = false
