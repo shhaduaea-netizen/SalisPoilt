@@ -7,8 +7,7 @@ import { Button } from '@/shared/ui/Button';
 import { Field, inputClass } from '@/shared/ui/Field';
 import { firebaseErrorCode } from '@/shared/auth/firebase';
 import { useAuth } from '@/features/auth/useAuth';
-
-const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,12}$/;
+import { PASSWORD_PATTERN } from '@/shared/auth/passwordPolicy';
 
 const schema = z
   .object({

@@ -285,25 +285,37 @@ export async function checkPasswordRequest(browserFingerprint: string): Promise<
   return callRoster<{ pending: boolean; requestedAt: string | null }>({ action: 'checkPasswordRequest', browserFingerprint });
 }
 
-export async function createPasswordRequestByEmail(email: string, browserFingerprint: string): Promise<void> {
-  const response = await fetch(ROSTER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'requestPasswordByEmail', email, browserFingerprint }),
-  });
-  if (!response.ok) throw new RosterError(response.status, 'request_failed');
+export interface PasswordResetStatus {
+  status: 'none' | 'pending' | 'approved' | 'rejected' | 'expired';
 }
 
-export async function checkPasswordRequestByEmail(email: string, browserFingerprint: string): Promise<{ pending: boolean; requestedAt: string | null }> {
+async function callPublicRoster<T>(body: Record<string, unknown>): Promise<T> {
   const response = await fetch(ROSTER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'checkPasswordRequestByEmail', email, browserFingerprint }),
+    body: JSON.stringify(body),
   });
-  if (!response.ok) throw new RosterError(response.status, 'request_failed');
-  const payload = await response.json().catch(() => null);
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const failure = (typeof payload === 'object' && payload !== null ? payload : {}) as { error?: unknown };
+    throw new RosterError(response.status, typeof failure.error === 'string' ? failure.error : 'request_failed');
+  }
   if (typeof payload !== 'object' || payload === null) throw new RosterError(response.status, 'invalid_response');
-  return payload as { pending: boolean; requestedAt: string | null };
+  return payload as T;
+}
+
+export async function requestPasswordByEmail(email: string, requestToken: string | null): Promise<{ requestToken: string }> {
+  const result = await callPublicRoster<{ requestToken: string }>({ action: 'requestPasswordByEmail', email, requestToken });
+  if (typeof result.requestToken !== 'string') throw new RosterError(200, 'invalid_response');
+  return result;
+}
+
+export async function checkPasswordRequestByEmail(email: string, requestToken: string): Promise<PasswordResetStatus> {
+  return callPublicRoster<PasswordResetStatus>({ action: 'checkPasswordRequestByEmail', email, requestToken });
+}
+
+export async function completePasswordReset(email: string, requestToken: string, newPassword: string): Promise<void> {
+  await callPublicRoster<{ ok: true }>({ action: 'completePasswordReset', email, requestToken, newPassword });
 }
 
 export async function addCompanyAssistant(input: {

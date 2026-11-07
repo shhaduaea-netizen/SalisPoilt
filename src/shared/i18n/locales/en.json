@@ -233,7 +233,17 @@
       "requestApproval": "Request approval from an owner",
       "requested": "Your request was sent to the platform or company owner.",
       "pending": "Your password reset request is pending and waiting for an administrator's approval.",
+      "rejected": "Your password reset request was rejected. You can send a new request.",
+      "expired": "The approval has expired. Please send a new request.",
       "back": "Back to sign in"
+    },
+    "reset": {
+      "approved": "Your request was approved. Enter and confirm your new password to finish resetting it.",
+      "submit": "Save new password",
+      "submitting": "Saving...",
+      "success": "Your password has been changed. Sign in with your new password.",
+      "notApproved": "This approval is no longer valid. Please send a new request.",
+      "backToSignIn": "Go to sign in"
     },
     "signOut": "Sign out"
   },

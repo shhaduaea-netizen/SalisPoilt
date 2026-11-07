@@ -679,35 +679,6 @@ async function listPasswordRequests(actor: MemberRow) {
   return { requests: data ?? [] };
 }
 
-export async function requestPasswordByEmail(body: Record<string, unknown>) {
-  const email = requireString(body.email, "email").toLowerCase();
-  const fingerprint = optionalString(body.browserFingerprint);
-  const { data: member, error } = await db.from("members").select("id, company_id, role").eq("email", email).maybeSingle();
-  if (error) throw error;
-  if (member) {
-    const isPlatformOwner = member.role === "OWNER" || member.role === "SUPER_ADMIN";
-    const targetRole = isPlatformOwner ? "platform" : "company";
-    let existingQuery = db
-      .from("password_change_requests")
-      .select("id")
-      .eq("member_id", member.id)
-      .eq("status", "pending");
-    if (fingerprint) existingQuery = existingQuery.eq("browser_fingerprint", fingerprint);
-    const { data: existing } = await existingQuery.maybeSingle();
-    if (!existing) {
-      const { error: insertError } = await db.from("password_change_requests").insert({
-        member_id: member.id,
-        company_id: member.company_id,
-        status: "pending",
-        browser_fingerprint: fingerprint,
-        target_role: targetRole,
-      });
-      if (insertError) throw insertError;
-    }
-  }
-  return { ok: true };
-}
-
 async function createPasswordRequest(actor: MemberRow, body: Record<string, unknown>) {
   const fingerprint = optionalString(body.browserFingerprint);
   const isPlatformOwner = isPlatformRole(actor.role);
@@ -762,36 +733,17 @@ async function reviewPasswordRequest(actor: MemberRow, body: Record<string, unkn
   if (checkError) throw checkError;
   if (!req) throw new HttpError(404, "not_found");
   if ((req as { member_id: string }).member_id === actor.id) throw new HttpError(403, "cannot_review_own_request");
+  if (platform) {
+    const requester = await loadMember((req as { member_id: string }).member_id);
+    if (requester.role === "EMPLOYEE" || requester.role === "BRANCH_MANAGER" || requester.role === "TEAM_LEADER") {
+      throw new HttpError(404, "not_found");
+    }
+  }
   const { error } = await db.from("password_change_requests").update({
     status: decision,
     reviewed_at: new Date().toISOString(),
     reviewed_by: actor.id,
   }).eq("id", id);
   if (error) throw error;
-  if (decision === "approved") {
-    await db.from("members").update({
-      must_change_password: true,
-      temp_password: null,
-      updated_at: new Date().toISOString(),
-    }).eq("id", (req as { member_id: string }).member_id);
-  }
   return { ok: true };
-}
-
-export async function checkPasswordRequestByEmail(body: Record<string, unknown>) {
-  const email = requireString(body.email, "email").toLowerCase();
-  const fingerprint = optionalString(body.browserFingerprint);
-  if (!fingerprint) return { pending: false };
-  const { data: member, error: mError } = await db.from("members").select("id").eq("email", email).maybeSingle();
-  if (mError) throw mError;
-  if (!member) return { pending: false };
-  const { data, error } = await db
-    .from("password_change_requests")
-    .select("id, status, requested_at")
-    .eq("member_id", member.id)
-    .eq("status", "pending")
-    .eq("browser_fingerprint", fingerprint)
-    .maybeSingle();
-  if (error) throw error;
-  return { pending: Boolean(data), requestedAt: data?.requested_at ?? null };
 }
