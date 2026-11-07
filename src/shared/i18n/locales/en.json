@@ -475,8 +475,10 @@
     "emptyBody": "When an employee requests a password change, it will appear here for your approval.",
     "approve": "Approve",
     "reject": "Reject",
+    "managerRequest": "Company manager",
     "columns": {
       "employee": "Employee",
+      "company": "Company",
       "userId": "User ID",
       "requestedAt": "Requested",
       "status": "Status",

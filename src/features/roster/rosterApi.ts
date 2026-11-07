@@ -270,7 +270,8 @@ export interface PasswordChangeRequest {
   note: string | null;
   target_role: string | null;
   browser_fingerprint: string | null;
-  members: { full_name_en: string; email: string; user_id: string } | null;
+  members: { full_name_en: string; email: string; user_id: string; role: string } | null;
+  companies: { name: string } | null;
 }
 
 export async function listPasswordRequests(): Promise<{ requests: PasswordChangeRequest[] }> {

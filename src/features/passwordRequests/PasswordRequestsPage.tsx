@@ -48,6 +48,9 @@ export function PasswordRequestsPage() {
                   {t('passwordRequests.columns.employee')}
                 </th>
                 <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                  {t('passwordRequests.columns.company')}
+                </th>
+                <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-neutral-600">
                   {t('passwordRequests.columns.userId')}
                 </th>
                 <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-neutral-600">
@@ -66,13 +69,19 @@ export function PasswordRequestsPage() {
                 <tr key={req.id} className="transition-colors hover:bg-neutral-50">
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      <span className="font-medium text-primary-900">
+                      <span className="flex items-center gap-2 font-medium text-primary-900">
                         {req.members?.full_name_en ?? t('common.unknown')}
+                        {req.target_role === 'platform' && (
+                          <Badge tone="info">{t('passwordRequests.managerRequest')}</Badge>
+                        )}
                       </span>
                       <span className="text-xs text-neutral-500" dir="ltr">
                         {req.members?.email ?? ''}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-700">
+                    {req.companies?.name ?? t('common.unknown')}
                   </td>
                   <td className="px-4 py-3 font-mono text-neutral-700" dir="ltr">
                     {req.members?.user_id ?? ''}

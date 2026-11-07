@@ -666,14 +666,14 @@ async function addCompanyAssistant(actor: MemberRow, body: Record<string, unknow
 async function listPasswordRequests(actor: MemberRow) {
   if (actor.role === "EMPLOYEE" && !hasCustomPermission(actor, "password.approve")) throw new HttpError(403, "forbidden");
   const platform = isPlatformRole(actor.role);
-  const cid = platform ? null : actor.company_id;
+  if (!platform && !actor.company_id) throw new HttpError(403, "forbidden");
   let query = db
     .from("password_change_requests")
-    .select("id, member_id, company_id, status, requested_at, reviewed_at, reviewed_by, note, target_role, browser_fingerprint, members!member_id!inner(full_name_en, email, user_id, role)")
+    .select("id, member_id, company_id, status, requested_at, reviewed_at, reviewed_by, note, target_role, browser_fingerprint, members!member_id!inner(full_name_en, email, user_id, role), companies(name)")
     .order("requested_at", { ascending: false })
-    .neq("member_id", actor.id);
-  if (cid) query = query.eq("company_id", cid);
-  if (platform) query = query.in("members.role", ["OWNER", "SUPER_ADMIN", "COMPANY_ADMIN"]);
+    .neq("member_id", actor.id)
+    .eq("target_role", platform ? "platform" : "company");
+  if (!platform) query = query.eq("company_id", actor.company_id);
   const { data, error } = await query;
   if (error) throw error;
   return { requests: data ?? [] };
@@ -693,7 +693,7 @@ async function createPasswordRequest(actor: MemberRow, body: Record<string, unkn
   const { data: existing } = await existingQuery.maybeSingle();
   if (existing) throw new HttpError(422, "request_already_pending");
 
-  const targetRole = isPlatformOwner ? "platform" : "company";
+  const targetRole = isPlatformOwner || actor.role === "COMPANY_ADMIN" ? "platform" : "company";
   const { error } = await db.from("password_change_requests").insert({
     member_id: actor.id,
     company_id: actor.company_id,
@@ -726,19 +726,19 @@ async function reviewPasswordRequest(actor: MemberRow, body: Record<string, unkn
   const decision = requireString(body.decision, "decision");
   if (decision !== "approved" && decision !== "rejected") throw new HttpError(422, "invalid_decision");
   const platform = isPlatformRole(actor.role);
-  const cid = platform ? null : actor.company_id;
-  let checkQuery = db.from("password_change_requests").select("id, company_id, member_id, status, target_role").eq("id", id).eq("status", "pending");
-  if (cid) checkQuery = checkQuery.eq("company_id", cid);
+  if (!platform && !actor.company_id) throw new HttpError(403, "forbidden");
+  const targetRole = platform ? "platform" : "company";
+  let checkQuery = db
+    .from("password_change_requests")
+    .select("id, company_id, member_id, status, target_role")
+    .eq("id", id)
+    .eq("status", "pending")
+    .eq("target_role", targetRole);
+  if (!platform) checkQuery = checkQuery.eq("company_id", actor.company_id);
   const { data: req, error: checkError } = await checkQuery.maybeSingle();
   if (checkError) throw checkError;
   if (!req) throw new HttpError(404, "not_found");
   if ((req as { member_id: string }).member_id === actor.id) throw new HttpError(403, "cannot_review_own_request");
-  if (platform) {
-    const requester = await loadMember((req as { member_id: string }).member_id);
-    if (requester.role === "EMPLOYEE" || requester.role === "BRANCH_MANAGER" || requester.role === "TEAM_LEADER") {
-      throw new HttpError(404, "not_found");
-    }
-  }
   const { error } = await db.from("password_change_requests").update({
     status: decision,
     reviewed_at: new Date().toISOString(),

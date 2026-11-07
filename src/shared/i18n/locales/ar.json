@@ -474,8 +474,10 @@
     "emptyBody": "عندما يطلب موظف تغيير كلمة المرور، ستظهر طلبه هنا للموافقة.",
     "approve": "موافقة",
     "reject": "رفض",
+    "managerRequest": "مدير شركة",
     "columns": {
       "employee": "الموظف",
+      "company": "الشركة",
       "userId": "رقم المستخدم",
       "requestedAt": "تاريخ الطلب",
       "status": "الحالة",
